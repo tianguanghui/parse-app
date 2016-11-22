@@ -3,18 +3,27 @@
 include __DIR__."/IpaParser.php";
 include __DIR__."/ApkParser.php";
 
-#apk解析
+echo "apk解析";
 $main = new ApkParser;
-$main->open('blabla.apk');
+$main->open('test.apk');
+echo "<br>包名:";
 echo $main->getPackage();
+echo "<br>版本名:";
 echo $main->getVersionName();
+echo "<br>版本号:";
 echo $main->getVersionCode();
+echo "<br>应用名称:";
 echo $main->getAppName();
 
-#ipa解析
+echo "<br>ipa解析";
 $main = new IpaParser;
-echo $main->parse('blabla.ipa');
+$main->parse('test.ipa');
+echo "<br>包名:";
 echo $main->getPackage();
-echo $main->getVersion();
+echo "<br>版本号:";
+echo $main->getVersionName();
+echo "<br>版本号:";
+echo $main->getVersionCode();
+echo "<br>应用名称:";
 echo $main->getAppName();
-var_dump( $main->getPlist() );
+//var_dump( $main->getPlist() );

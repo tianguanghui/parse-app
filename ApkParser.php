@@ -9,11 +9,11 @@
  *
  * 依赖功能：需要PHP的ZIP包函数支持。
  ******************************************************/
- 
+
 class ApkParser{
-//----------------------
-// 公共函数，供外部调用
-//----------------------
+    //----------------------
+    // 公共函数，供外部调用
+    //----------------------
     public function open($apk_file, $xml_file='AndroidManifest.xml'){
         $zip = new ZipArchive;
         if ($zip->open($apk_file) === TRUE) {
@@ -28,19 +28,19 @@ class ApkParser{
         }
         return false;
     }
-    
+
     public function parseString($xml){
         $this->xml = $xml;
         $this->length = strlen($xml);
- 
+
         $this->root = $this->parseBlock(self::AXML_FILE);
         return true;
     }
- 
+
     public function getXML($node=NULL, $lv=-1){
         if ($lv == -1) $node = $this->root;
         if (!$node) return '';
- 
+
         if ($node['type'] == self::END_TAG) $lv--;
         $xml = ($node['line'] == 0 || $node['line'] == $this->line) ? '' : "\n".str_repeat('  ', $lv);
         $xml .= $node['tag'];
@@ -50,23 +50,23 @@ class ApkParser{
         }
         return $xml;
     }
- 
+
     public function getPackage(){
         return $this->getAttribute('manifest', 'package');
     }
- 
+
     public function getVersionName(){
         return $this->getAttribute('manifest', 'android:versionName');
     }
- 
+
     public function getVersionCode(){
         return $this->getAttribute('manifest', 'android:versionCode');
     }
- 
+
     public function getAppName(){
-        return $this->getAttribute('manifest/application', 'android:name');
+        return $this->getAttribute('manifest/application', 'android:label');
     }
- 
+
     public function getMainActivity(){
         for ($id=0; true; $id++){
             $act = $this->getAttribute("manifest/application/activity[{$id}]/intent-filter/action", 'android:name');
@@ -75,16 +75,16 @@ class ApkParser{
         }
         return NULL;
     }
- 
+
     public function getActivity($idx=0){
         $idx = intval($idx);
         return $this->getAttribute("manifest/application/activity[{$idx}]", 'android:name');
     }
- 
+
     public function getAttribute($path, $name){
         $r = $this->getElement($path);
         if (is_null($r)) return NULL;
- 
+
         if (isset($r['attrs'])){
             foreach ($r['attrs'] as $a){
                 if ($a['ns_name'] == $name) return $this->getAttributeValue($a);
@@ -92,10 +92,10 @@ class ApkParser{
         }
         return NULL;
     }
- 
-//----------------------
-// 类型常量定义
-//----------------------
+
+    //----------------------
+    // 类型常量定义
+    //----------------------
     const AXML_FILE             = 0x00080003;
     const STRING_BLOCK          = 0x001C0001;
     const RESOURCEIDS           = 0x00080180;
@@ -104,7 +104,7 @@ class ApkParser{
     const START_TAG             = 0x00100102;
     const END_TAG               = 0x00100103;
     const TEXT                  = 0x00100104;
- 
+
     const TYPE_NULL             =0;
     const TYPE_REFERENCE        =1;
     const TYPE_ATTRIBUTE        =2;
@@ -119,12 +119,12 @@ class ApkParser{
     const TYPE_INT_COLOR_RGB8   =29;
     const TYPE_INT_COLOR_ARGB4  =30;
     const TYPE_INT_COLOR_RGB4   =31;
- 
+
     const UNIT_MASK             = 15;
     private static $RADIX_MULTS = array(0.00390625, 3.051758E-005, 1.192093E-007, 4.656613E-010);
     private static $DIMENSION_UNITS = array("px","dip","sp","pt","in","mm","","");
     private static $FRACTION_UNITS  = array("%","%p","","","","","","");
- 
+
     private $xml='';
     private $length = 0;
     private $stringCount = 0;
@@ -136,10 +136,10 @@ class ApkParser{
     private $cur_ns = NULL;
     private $root = NULL;
     private $line = 0;
- 
-//----------------------
-// 内部私有函数
-//----------------------
+
+    //----------------------
+    // 内部私有函数
+    //----------------------
     private function getElement($path){
         if (!$this->root) return NULL;
         $ps = explode('/', $path);
@@ -165,7 +165,7 @@ class ApkParser{
         }
         return $r;
     }
- 
+
     private function parseBlock($need = 0){
         $o = 0;
         $type = $this->get32($o);
@@ -173,7 +173,7 @@ class ApkParser{
         $size = $this->get32($o);
         if ($size < 8 || $size > $this->length) throw new Exception('Block Size Error', 2);
         $left = $this->length - $size;
- 
+
         $props = false;
         switch ($type){
             case self::AXML_FILE:
@@ -181,7 +181,7 @@ class ApkParser{
                     'line' => 0,
                     'tag' => '<?xml version="1.0" encoding="utf-8"?>'
                 );
-            break;
+                break;
             case self::STRING_BLOCK:
                 $this->stringCount = $this->get32($o);
                 $this->styleCount  = $this->get32($o);
@@ -193,33 +193,33 @@ class ApkParser{
                 $this->stringTab = $this->stringCount > 0 ? $this->getStringTab($strOffset, $strListOffset) : array();
                 $this->styleTab  = $this->styleCount > 0 ? $this->getStringTab($styOffset, $styListOffset) : array();
                 $o = $size;
-            break;
+                break;
             case self::RESOURCEIDS:
                 $count = $size / 4 - 2;
                 $this->resourceIDs = $this->get32array($o, $count);
-            break;
+                break;
             case self::START_NAMESPACE:
                 $o += 8;
                 $prefix = $this->get32($o);
                 $uri = $this->get32($o);
- 
+
                 if (empty($this->cur_ns)){
                     $this->cur_ns = array();
                     $this->ns[] = &$this->cur_ns;
                 }
                 $this->cur_ns[$uri] = $prefix;
-            break;
+                break;
             case self::END_NAMESPACE:
                 $o += 8;
                 $prefix = $this->get32($o);
                 $uri = $this->get32($o);
- 
+
                 if (empty($this->cur_ns)) break;
                 unset($this->cur_ns[$uri]);
-            break;
+                break;
             case self::START_TAG:
                 $line = $this->get32($o);
- 
+
                 $o += 4;
                 $attrs = array();
                 $props = array(
@@ -255,17 +255,17 @@ class ApkParser{
                 }
                 foreach ($props['attrs'] as $a){
                     $tag .= " {$a['ns_name']}=\"".
-                            $this->getAttributeValue($a).
-                            '"';
+                        $this->getAttributeValue($a).
+                        '"';
                 }
                 $tag .= '>';
                 $props['tag'] = $tag;
- 
+
                 unset($this->cur_ns);
                 $this->cur_ns = array();
                 $this->ns[] = &$this->cur_ns;
                 $left = -1;
-            break;
+                break;
             case self::END_TAG:
                 $line = $this->get32($o);
                 $o += 4;
@@ -282,19 +282,19 @@ class ApkParser{
                     $this->cur_ns = array_pop($this->ns);
                     $this->ns[] = &$this->cur_ns;
                 }
-            break;
+                break;
             case self::TEXT:
                 $o += 8;
                 $props = array(
                     'tag' => $this->getString($this->get32($o))
                 );
                 $o += 8;
-            break;
+                break;
             default:
                 throw new Exception('Block Type Error', 3);
-            break;
+                break;
         }
- 
+
         $this->skip($o);
         $child = array();
         while ($this->length > $left){
@@ -315,7 +315,7 @@ class ApkParser{
             return false;
         }
     }
- 
+
     private function getAttributeValue($a){
         $type = &$a['val_type'];
         $data = &$a['val_data'];
@@ -347,7 +347,7 @@ class ApkParser{
         }
         return sprintf('<0x%X, type 0x%02X>', $data, $type);
     }
- 
+
     private function _complexToFloat($data){
         return (float)($data & 0xFFFFFF00) * self::$RADIX_MULTS[($data>>4) & 3];
     }
@@ -359,7 +359,7 @@ class ApkParser{
     private static function _getPackage($data){
         return ($data >> 24 == 1) ? 'android:' : '';
     }
- 
+
     private function getStringTab($base, $list){
         $tab = array();
         foreach ($list as $off){
